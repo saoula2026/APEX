@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>APEX Platform — System Architecture & Engineering Blueprint</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #111726;
+      --panel-hover: #161f33;
+      --surface: #1b2438;
+      --ink: #f8fafc;
+      --secondary: #cbd5e1;
+      --muted: #94a3b8;
+      --rule: #1e293b;
+      --rule-strong: #334155;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.35);
+      --accent-soft: rgba(59, 130, 246, 0.12);
+      --emerald: #10b981;
+      --emerald-soft: rgba(16, 185, 129, 0.14);
+      --violet: #8b5cf6;
+      --violet-soft: rgba(139, 92, 246, 0.14);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f4f6fb;
+      --panel: #ffffff;
+      --panel-hover: #f8fafc;
+      --surface: #f1f5f9;
+      --ink: #0f172a;
+      --secondary: #334155;
+      --muted: #64748b;
+      --rule: #e2e8f0;
+      --rule-strong: #cbd5e1;
+      --accent: #2563eb;
+      --accent-glow: rgba(37, 99, 235, 0.2);
+      --accent-soft: rgba(37, 99, 235, 0.08);
+      --emerald: #059669;
+      --emerald-soft: rgba(5, 150, 105, 0.1);
+      --violet: #7c3aed;
+      --violet-soft: rgba(124, 58, 237, 0.1);
+      --amber: #d97706;
+      --rose: #e11d48;
+      --cyan: #0891b2;
+      --shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--secondary);
+      font: 15px/1.68 var(--sans);
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+      padding-bottom: 60px;
+    }
+
+    .shell {
+      width: min(1280px, calc(100% - 48px));
+      margin: 0 auto;
+    }
+
+    /* Header & Controls */
+    .masthead {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 40px 0 28px;
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 32px;
+      animation: fadeDown 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+      color: var(--accent);
+      font: 600 12px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse 2s infinite;
+    }
+
+    h1 {
+      font: 800 30px/1.25 var(--sans);
+      color: var(--ink);
+      letter-spacing: -0.02em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-btn {
+      height: 40px;
+      padding: 0 16px;
+      border-radius: 10px;
+      border: 1px solid var(--rule-strong);
+      background: var(--panel);
+      color: var(--ink);
+      font: 600 13px var(--sans);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .theme-btn:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 20px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #1d4ed8);
+      color: #fff;
+      font: 600 13.5px var(--sans);
+      text-decoration: none;
+      box-shadow: 0 4px 14px var(--accent-glow);
+      transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 22px var(--accent-glow);
+      filter: brightness(1.08);
+    }
+
+    /* Grid & Cards */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .span12 { grid-column: span 12; }
+    .span6 { grid-column: span 6; }
+    @media (max-width: 960px) { .span6 { grid-column: span 12; } }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                  border-color 0.28s ease,
+                  box-shadow 0.28s ease;
+      animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+
+    .panel:nth-child(1) { animation-delay: 0.05s; }
+    .panel:nth-child(2) { animation-delay: 0.12s; }
+    .panel:nth-child(3) { animation-delay: 0.18s; }
+    .panel:nth-child(4) { animation-delay: 0.24s; }
+    .panel:nth-child(5) { animation-delay: 0.30s; }
+
+    .panel:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in srgb, var(--accent) 50%, var(--rule));
+      box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.55), 0 0 20px -5px var(--accent-glow);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--rule);
+      background: color-mix(in srgb, var(--surface) 40%, transparent);
+    }
+
+    .panel-id {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font: 700 13px/1 var(--mono);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .panel-head h2 {
+      font: 700 17px/1.3 var(--sans);
+      color: var(--ink);
+    }
+
+    .panel-body {
+      padding: 22px 24px;
+    }
+
+    /* Executive Summary Verdict */
+    .verdict-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 28px;
+      align-items: center;
+    }
+    @media (max-width: 900px) { .verdict-grid { grid-template-columns: 1fr; } }
+
+    .verdict-box {
+      padding: 20px 22px;
+      border-radius: 12px;
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      color: var(--ink);
+      font-size: 16.5px;
+      font-weight: 500;
+      line-height: 1.65;
+    }
+
+    .verdict-box strong {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .highlights-list {
+      list-style: none;
+      display: grid;
+      gap: 12px;
+    }
+
+    .highlights-list li {
+      position: relative;
+      padding: 12px 14px 12px 42px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      font-size: 14px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .highlights-list li:hover {
+      transform: translateX(6px);
+      border-color: var(--accent);
+    }
+
+    .highlights-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--emerald-soft);
+      color: var(--emerald);
+      font: 700 12px/1 var(--sans);
+      display: grid;
+      place-items: center;
+    }
+
+    /* Interactive SVG Diagrams */
+    .diagram-wrap {
+      width: 100%;
+      overflow-x: auto;
+      background: color-mix(in srgb, var(--bg) 65%, transparent);
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    svg.interactive-svg {
+      width: 100%;
+      min-width: 880px;
+      height: auto;
+      display: block;
+      font-family: var(--mono);
+    }
+
+    /* Animated Data Flow Edges */
+    .flow-edge {
+      stroke-dasharray: 7 5;
+      animation: flowDash 18s linear infinite;
+      transition: stroke-width 0.2s ease, opacity 0.25s ease, filter 0.25s ease;
+    }
+
+    .flow-edge-solid {
+      transition: stroke-width 0.2s ease, opacity 0.25s ease, filter 0.25s ease;
+    }
+
+    /* SVG Node Hover & Focus Effects */
+    .svg-node {
+      cursor: pointer;
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.25s ease,
+                  filter 0.25s ease;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .svg-node:hover {
+      transform: scale(1.04);
+      filter: drop-shadow(0 0 12px var(--accent));
+    }
+
+    svg.dimmed .svg-node:not(.active-node) {
+      opacity: 0.22;
+    }
+
+    svg.dimmed .edge-group:not(.active-edge) {
+      opacity: 0.15;
+    }
+
+    svg.dimmed .edge-group.active-edge path {
+      stroke-width: 2.8px !important;
+      filter: drop-shadow(0 0 6px var(--accent));
+    }
+
+    .diagram-caption {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: top;
+    }
+
+    thead th {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: var(--surface);
+    }
+
+    thead th:first-child { border-radius: 8px 0 0 8px; }
+    thead th:last-child { border-radius: 0 8px 8px 0; }
+
+    tbody tr {
+      transition: background 0.18s ease, transform 0.18s ease;
+    }
+
+    tbody tr:hover {
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: var(--surface);
+      border: 1px solid var(--rule-strong);
+      color: var(--ink);
+    }
+
+    /* Pillar Badges */
+    .pillar-tag {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font: 600 11.5px var(--mono);
+      background: var(--emerald-soft);
+      color: var(--emerald);
+      margin-bottom: 4px;
+    }
+
+    /* Footer CTA Banner */
+    .cta-banner {
+      margin-top: 32px;
+      padding: 32px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--panel)), var(--panel));
+      border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--rule));
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .cta-banner h3 {
+      font: 700 20px/1.3 var(--sans);
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    /* Keyframes */
+    @keyframes flowDash {
+      to { stroke-dashoffset: -240; }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- Masthead -->
+    <header class="masthead">
+      <div class="brand-title">
+        <span class="badge-pill"><span class="pulse-dot"></span> Production B2B SaaS Architecture</span>
+        <h1>APEX — Construction Estimation & Management Ecosystem</h1>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="theme-btn" id="themeToggle">Switch Light / Dark</button>
+        <a href="https://apex-ochre-gamma.vercel.app/" target="_blank" rel="noopener noreferrer" class="cta-btn">
+          <span>Try Live Platform</span>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11L11 5M11 5H5M11 5V11"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="board">
+
+      <!-- Panel A: Executive Architectural Overview -->
+      <section class="panel span12">
+        <header class="panel-head">
+          <span class="panel-id">A</span>
+          <h2>Executive System Architecture Summary</h2>
+        </header>
+        <div class="panel-body">
+          <div class="verdict-grid">
+            <div class="verdict-box">
+              APEX is engineered as a <strong>Dual-Client B2B SaaS Platform</strong> (React Web SPA + React Native Expo Mobile Client) powered by a <strong>Metadata-Driven Calculation Engine</strong> and a <strong>33-Table PostgreSQL Relational Spine</strong>. Every saved estimate atomically snapshots its formula version, material prices, waste margins, and live USD-to-DZD exchange rates.
+            </div>
+            <ul class="highlights-list">
+              <li><strong>Zero-Deploy Dynamic Formula Engine:</strong> Administrators configure <em>N</em> civil engineering categories, equations, and dynamic input fields directly from the database without code deployments.</li>
+              <li><strong>Transactional Cost Snapshotting:</strong> Atomic PostgreSQL transactions freeze unit prices, waste factors, and FX rates to protect historical budgets from market volatility.</li>
+              <li><strong>Cross-Platform Field & Office Clients:</strong> Shared API contracts serving a responsive React Web SPA and a 35+ screen Expo SDK 52 mobile client with full Arabic RTL mirroring.</li>
+              <li><strong>SaaS Quota & AI Governance:</strong> Subscription middleware enforcing per-tier project limits and metered Groq LLaMA-3.3-70B engineering consultations.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 1: Interactive Runtime Topology Diagram -->
+      <section class="panel span12">
+        <header class="panel-head">
+          <span class="panel-id">1</span>
+          <h2>End-to-End Dual-Client Runtime Topology (Hover over any node to trace connections)</h2>
+        </header>
+        <div class="panel-body">
+          <div class="diagram-wrap">
+            <svg class="interactive-svg" id="runtimeSvg" viewBox="0 0 1240 540" aria-label="APEX Dual-Client Runtime Topology">
+              <defs>
+                <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+                </marker>
+                <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+                </marker>
+                <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+                </marker>
+                <marker id="arrow-slate" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+                </marker>
+              </defs>
+
+              <!-- Connections -->
+              <g class="edge-group" data-from="browser" data-to="api">
+                <path class="flow-edge" d="M 220 250 L 310 295" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+                <text x="260" y="262" fill="#22d3ee" font-size="9" text-anchor="middle">HTTPS / REST</text>
+              </g>
+
+              <g class="edge-group" data-from="mobile" data-to="api">
+                <path class="flow-edge" d="M 220 375 L 310 330" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+                <text x="260" y="368" fill="#22d3ee" font-size="9" text-anchor="middle">Axios + JWT</text>
+              </g>
+
+              <g class="edge-group" data-from="api" data-to="guard">
+                <path class="flow-edge" d="M 405 270 L 405 165" fill="none" stroke="#fb7185" stroke-width="1.8" marker-end="url(#arrow-rose)"/>
+                <text x="438" y="220" fill="#fb7185" font-size="9" text-anchor="middle">Auth & Quota</text>
+              </g>
+
+              <g class="edge-group" data-from="guard" data-to="engine">
+                <path class="flow-edge" d="M 500 130 L 580 130" fill="none" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-emerald)"/>
+                <text x="540" y="120" fill="#34d399" font-size="9" text-anchor="middle">Metered</text>
+              </g>
+
+              <g class="edge-group" data-from="engine" data-to="db">
+                <path class="flow-edge" d="M 780 130 L 1110 130 L 1110 270" fill="none" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-emerald)"/>
+                <text x="945" y="120" fill="#34d399" font-size="9" text-anchor="middle">Dynamic Formulas & Snapshots</text>
+              </g>
+
+              <g class="edge-group" data-from="api" data-to="db">
+                <path class="flow-edge" d="M 500 310 L 1020 310" fill="none" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow-slate)"/>
+                <text x="760" y="300" fill="#94a3b8" font-size="9" text-anchor="middle">postgres.js Transactions (SQL)</text>
+              </g>
+
+              <g class="edge-group" data-from="api" data-to="ai">
+                <path class="flow-edge" d="M 370 355 L 350 435" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#arrow-slate)"/>
+                <text x="335" y="400" fill="#94a3b8" font-size="9" text-anchor="middle">AI Chat</text>
+              </g>
+
+              <g class="edge-group" data-from="api" data-to="fx">
+                <path class="flow-edge" d="M 415 355 L 545 435" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#arrow-slate)"/>
+                <text x="495" y="395" fill="#94a3b8" font-size="9" text-anchor="middle">Live FX</text>
+              </g>
+
+              <g class="edge-group" data-from="api" data-to="media">
+                <path class="flow-edge" d="M 465 355 L 735 435" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#arrow-slate)"/>
+                <text x="625" y="390" fill="#94a3b8" font-size="9" text-anchor="middle">Media</text>
+              </g>
+
+              <g class="edge-group" data-from="api" data-to="mail">
+                <path class="flow-edge" d="M 500 335 L 920 435" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#arrow-slate)"/>
+                <text x="745" y="380" fill="#94a3b8" font-size="9" text-anchor="middle">PDF Reports</text>
+              </g>
+
+              <!-- Nodes -->
+              <g class="svg-node" data-node="browser">
+                <rect x="30" y="210" width="190" height="68" rx="10" fill="rgba(6, 182, 212, 0.14)" stroke="#22d3ee" stroke-width="1.6"/>
+                <text x="125" y="240" fill="#f8fafc" font-size="12" font-weight="700" text-anchor="middle">React Web SPA</text>
+                <text x="125" y="258" fill="#94a3b8" font-size="9.5" text-anchor="middle">React Router · TanStack Query</text>
+              </g>
+
+              <g class="svg-node" data-node="mobile">
+                <rect x="30" y="340" width="190" height="68" rx="10" fill="rgba(6, 182, 212, 0.14)" stroke="#22d3ee" stroke-width="1.6"/>
+                <text x="125" y="370" fill="#f8fafc" font-size="12" font-weight="700" text-anchor="middle">Expo Mobile App</text>
+                <text x="125" y="388" fill="#94a3b8" font-size="9.5" text-anchor="middle">React Native · 35+ RTL Screens</text>
+              </g>
+
+              <g class="svg-node" data-node="api">
+                <rect x="310" y="270" width="190" height="85" rx="10" fill="rgba(16, 185, 129, 0.16)" stroke="#34d399" stroke-width="1.8"/>
+                <text x="405" y="306" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle">Express API Server</text>
+                <text x="405" y="326" fill="#94a3b8" font-size="9.5" text-anchor="middle">Auth · Catalog · Estimation · Admin</text>
+              </g>
+
+              <g class="svg-node" data-node="guard">
+                <rect x="310" y="95" width="190" height="68" rx="10" fill="rgba(244, 63, 94, 0.15)" stroke="#fb7185" stroke-width="1.6"/>
+                <text x="405" y="125" fill="#f8fafc" font-size="12" font-weight="700" text-anchor="middle">JWT + Plan Quota Gate</text>
+                <text x="405" y="143" fill="#94a3b8" font-size="9.5" text-anchor="middle">15m Access · 7d Silent Refresh</text>
+              </g>
+
+              <g class="svg-node" data-node="engine">
+                <rect x="580" y="95" width="200" height="68" rx="10" fill="rgba(16, 185, 129, 0.16)" stroke="#34d399" stroke-width="1.6"/>
+                <text x="680" y="125" fill="#f8fafc" font-size="12" font-weight="700" text-anchor="middle">Dynamic Cost Engine</text>
+                <text x="680" y="143" fill="#94a3b8" font-size="9.5" text-anchor="middle">Formulas · Waste · Market Factor</text>
+              </g>
+
+              <g class="svg-node" data-node="db">
+                <rect x="1020" y="270" width="185" height="80" rx="10" fill="rgba(139, 92, 246, 0.18)" stroke="#a78bfa" stroke-width="1.8"/>
+                <text x="1112" y="305" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle">PostgreSQL Store</text>
+                <text x="1112" y="325" fill="#94a3b8" font-size="9.5" text-anchor="middle">33 Tables · 7 Functional Domains</text>
+              </g>
+
+              <g class="svg-node" data-node="ai">
+                <rect x="260" y="435" width="175" height="64" rx="10" fill="rgba(148, 163, 184, 0.14)" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="347" y="463" fill="#f8fafc" font-size="11.5" font-weight="700" text-anchor="middle">Groq LLM Engine</text>
+                <text x="347" y="481" fill="#94a3b8" font-size="9" text-anchor="middle">llama-3.3-70b Bilingual</text>
+              </g>
+
+              <g class="svg-node" data-node="fx">
+                <rect x="455" y="435" width="175" height="64" rx="10" fill="rgba(148, 163, 184, 0.14)" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="542" y="463" fill="#f8fafc" font-size="11.5" font-weight="700" text-anchor="middle">ExchangeRate API</text>
+                <text x="542" y="481" fill="#94a3b8" font-size="9" text-anchor="middle">USD → DZD · 3s Fallback Cache</text>
+              </g>
+
+              <g class="svg-node" data-node="media">
+                <rect x="650" y="435" width="170" height="64" rx="10" fill="rgba(245, 158, 11, 0.14)" stroke="#fbbf24" stroke-width="1.5"/>
+                <text x="735" y="463" fill="#f8fafc" font-size="11.5" font-weight="700" text-anchor="middle">Cloudinary CDN</text>
+                <text x="735" y="481" fill="#94a3b8" font-size="9" text-anchor="middle">Project & Site Assets</text>
+              </g>
+
+              <g class="svg-node" data-node="mail">
+                <rect x="840" y="435" width="175" height="64" rx="10" fill="rgba(148, 163, 184, 0.14)" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="927" y="463" fill="#f8fafc" font-size="11.5" font-weight="700" text-anchor="middle">PDF & SMTP Service</text>
+                <text x="927" y="481" fill="#94a3b8" font-size="9" text-anchor="middle">Automated Devis Delivery</text>
+              </g>
+            </svg>
+          </div>
+          <div class="diagram-caption">
+            <span>Unified Express API serving both React SPA (Web) and React Native (Expo 52) clients with live USD-to-DZD synchronization.</span>
+            <span>Interactive SVG · Hover nodes to inspect paths</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 2: Interactive ERD & Class Spine Diagram -->
+      <section class="panel span12">
+        <header class="panel-head">
+          <span class="panel-id">2</span>
+          <h2>Relational Estimation Spine & Transactional Snapshot Model (Hover tables to highlight foreign-key links)</h2>
+        </header>
+        <div class="panel-body">
+          <div class="diagram-wrap">
+            <svg class="interactive-svg" id="erdSvg" viewBox="0 0 1200 580" aria-label="APEX Estimation Entity Relationship Spine">
+              <!-- Domain Bands -->
+              <rect x="20" y="20" width="340" height="535" rx="14" fill="rgba(139, 92, 246, 0.05)" stroke="rgba(139, 92, 246, 0.25)" stroke-dasharray="5 5"/>
+              <text x="40" y="46" fill="#a78bfa" font-size="11" font-weight="700">ACCOUNT & SAAS ENTITLEMENTS</text>
+
+              <rect x="420" y="20" width="350" height="535" rx="14" fill="rgba(6, 182, 212, 0.05)" stroke="rgba(6, 182, 212, 0.25)" stroke-dasharray="5 5"/>
+              <text x="440" y="46" fill="#22d3ee" font-size="11" font-weight="700">PROJECT & FORMULA SNAPSHOTS</text>
+
+              <rect x="830" y="20" width="350" height="535" rx="14" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.25)" stroke-dasharray="5 5"/>
+              <text x="850" y="46" fill="#34d399" font-size="11" font-weight="700">ITEMIZED COST LINES (DZD)</text>
+
+              <!-- Relationship Edges -->
+              <g class="edge-group" data-from="users" data-to="subscriptions">
+                <path class="flow-edge" d="M 190 185 L 190 235" fill="none" stroke="#a78bfa" stroke-width="1.8"/>
+              </g>
+              <g class="edge-group" data-from="plans" data-to="subscriptions">
+                <path class="flow-edge" d="M 190 420 L 190 365" fill="none" stroke="#a78bfa" stroke-width="1.8"/>
+              </g>
+              <g class="edge-group" data-from="users" data-to="projects">
+                <path class="flow-edge" d="M 335 120 L 445 120" fill="none" stroke="#22d3ee" stroke-width="1.8"/>
+              </g>
+              <g class="edge-group" data-from="subscriptions" data-to="estimation">
+                <path class="flow-edge" d="M 335 295 L 445 295" fill="none" stroke="#22d3ee" stroke-width="1.8"/>
+              </g>
+              <g class="edge-group" data-from="projects" data-to="estimation">
+                <path class="flow-edge" d="M 595 185 L 595 235" fill="none" stroke="#22d3ee" stroke-width="1.8"/>
+              </g>
+              <g class="edge-group" data-from="estimation" data-to="project_details">
+                <path class="flow-edge" d="M 595 365 L 595 405" fill="none" stroke="#22d3ee" stroke-width="1.8"/>
+              </g>
+              <g class="edge-group" data-from="project_details" data-to="service">
+                <path class="flow-edge" d="M 745 450 L 795 450 L 795 180 L 855 180" fill="none" stroke="#34d399" stroke-width="1.8"/>
+              </g>
+              <g class="edge-group" data-from="project_details" data-to="material">
+                <path class="flow-edge" d="M 745 480 L 855 480" fill="none" stroke="#34d399" stroke-width="1.8"/>
+              </g>
+
+              <!-- Entity Cards -->
+              <g class="svg-node" data-node="users">
+                <rect x="45" y="65" width="290" height="120" rx="8" fill="#111726" stroke="#a78bfa" stroke-width="1.5"/>
+                <rect x="45" y="65" width="290" height="28" rx="8" fill="rgba(139, 92, 246, 0.25)"/>
+                <text x="190" y="84" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">users</text>
+                <text x="60" y="112" fill="#c4b5fd" font-size="10.5">PK  id : uuid</text>
+                <text x="60" y="132" fill="#cbd5e1" font-size="10.5">UK  email : varchar</text>
+                <text x="60" y="152" fill="#cbd5e1" font-size="10.5">    role : user_role (CLIENT/ADMIN)</text>
+                <text x="60" y="172" fill="#cbd5e1" font-size="10.5">    language : varchar (ar/en)</text>
+              </g>
+
+              <g class="svg-node" data-node="subscriptions">
+                <rect x="45" y="235" width="290" height="130" rx="8" fill="#111726" stroke="#a78bfa" stroke-width="1.5"/>
+                <rect x="45" y="235" width="290" height="28" rx="8" fill="rgba(139, 92, 246, 0.25)"/>
+                <text x="190" y="254" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">subscriptions</text>
+                <text x="60" y="282" fill="#c4b5fd" font-size="10.5">PK  subscription_id : uuid</text>
+                <text x="60" y="302" fill="#fdba74" font-size="10.5">FK  user_id · plan_id : uuid</text>
+                <text x="60" y="322" fill="#cbd5e1" font-size="10.5">    status : subscription_status</text>
+                <text x="60" y="342" fill="#34d399" font-size="10.5">    features_snapshot : jsonb</text>
+              </g>
+
+              <g class="svg-node" data-node="plans">
+                <rect x="45" y="420" width="290" height="115" rx="8" fill="#111726" stroke="#a78bfa" stroke-width="1.5"/>
+                <rect x="45" y="420" width="290" height="28" rx="8" fill="rgba(139, 92, 246, 0.25)"/>
+                <text x="190" y="439" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">plans &amp; features</text>
+                <text x="60" y="467" fill="#c4b5fd" font-size="10.5">PK  plan_id : uuid</text>
+                <text x="60" y="487" fill="#cbd5e1" font-size="10.5">    name_en / name_ar : varchar</text>
+                <text x="60" y="507" fill="#cbd5e1" font-size="10.5">    price · duration : numeric / int</text>
+              </g>
+
+              <g class="svg-node" data-node="projects">
+                <rect x="445" y="65" width="300" height="120" rx="8" fill="#111726" stroke="#22d3ee" stroke-width="1.5"/>
+                <rect x="445" y="65" width="300" height="28" rx="8" fill="rgba(6, 182, 212, 0.22)"/>
+                <text x="595" y="84" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">projects</text>
+                <text x="460" y="112" fill="#67e8f9" font-size="10.5">PK  project_id : uuid</text>
+                <text x="460" y="132" fill="#fdba74" font-size="10.5">FK  user_id · subscription_id</text>
+                <text x="460" y="152" fill="#cbd5e1" font-size="10.5">    name · status : ACTIVE/COMPLETED</text>
+                <text x="460" y="172" fill="#cbd5e1" font-size="10.5">    image_url · budget_category</text>
+              </g>
+
+              <g class="svg-node" data-node="estimation">
+                <rect x="445" y="235" width="300" height="130" rx="8" fill="#111726" stroke="#22d3ee" stroke-width="1.5"/>
+                <rect x="445" y="235" width="300" height="28" rx="8" fill="rgba(6, 182, 212, 0.22)"/>
+                <text x="595" y="254" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">estimation</text>
+                <text x="460" y="282" fill="#67e8f9" font-size="10.5">PK  estimation_id : uuid</text>
+                <text x="460" y="302" fill="#fdba74" font-size="10.5">FK  project_id · subscription_id</text>
+                <text x="460" y="322" fill="#cbd5e1" font-size="10.5">    budget_type : text</text>
+                <text x="460" y="342" fill="#34d399" font-size="10.5">    total_budget : numeric (DZD)</text>
+              </g>
+
+              <g class="svg-node" data-node="project_details">
+                <rect x="445" y="405" width="300" height="135" rx="8" fill="#111726" stroke="#22d3ee" stroke-width="1.5"/>
+                <rect x="445" y="405" width="300" height="28" rx="8" fill="rgba(6, 182, 212, 0.22)"/>
+                <text x="595" y="424" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">project_details (Leaf Node)</text>
+                <text x="460" y="450" fill="#67e8f9" font-size="10.5">PK  id : uuid</text>
+                <text x="460" y="470" fill="#fdba74" font-size="10.5">FK  estimation_id · selected_formula_id</text>
+                <text x="460" y="490" fill="#34d399" font-size="10.5">    formula_version_snapshot : int</text>
+                <text x="460" y="510" fill="#cbd5e1" font-size="10.5">    values (jsonb) · results (jsonb)</text>
+              </g>
+
+              <g class="svg-node" data-node="service">
+                <rect x="855" y="95" width="305" height="165" rx="8" fill="#111726" stroke="#34d399" stroke-width="1.5"/>
+                <rect x="855" y="95" width="305" height="28" rx="8" fill="rgba(16, 185, 129, 0.22)"/>
+                <text x="1007" y="114" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">estimation_detail_service</text>
+                <text x="870" y="142" fill="#6ee7b7" font-size="10.5">PK  detail_id : uuid</text>
+                <text x="870" y="162" fill="#fdba74" font-size="10.5">FK  project_details_id · service_id</text>
+                <text x="870" y="182" fill="#cbd5e1" font-size="10.5">    quantity : double precision</text>
+                <text x="870" y="202" fill="#34d399" font-size="10.5">    unit_price_snapshot : DZD</text>
+                <text x="870" y="222" fill="#34d399" font-size="10.5">    exchange_rate_snapshot : USD/DZD</text>
+                <text x="870" y="242" fill="#fff" font-size="10.5" font-weight="600">    sub_total : numeric</text>
+              </g>
+
+              <g class="svg-node" data-node="material">
+                <rect x="855" y="340" width="305" height="195" rx="8" fill="#111726" stroke="#34d399" stroke-width="1.5"/>
+                <rect x="855" y="340" width="305" height="28" rx="8" fill="rgba(16, 185, 129, 0.22)"/>
+                <text x="1007" y="359" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">estimation_detail_material</text>
+                <text x="870" y="387" fill="#6ee7b7" font-size="10.5">PK  detail_id : uuid</text>
+                <text x="870" y="407" fill="#fdba74" font-size="10.5">FK  project_details_id · material_id</text>
+                <text x="870" y="427" fill="#cbd5e1" font-size="10.5">    quantity · quantity_with_waste</text>
+                <text x="870" y="447" fill="#34d399" font-size="10.5">    unit_price_snapshot : DZD</text>
+                <text x="870" y="467" fill="#34d399" font-size="10.5">    waste_factor_snapshot : %</text>
+                <text x="870" y="487" fill="#34d399" font-size="10.5">    exchange_rate_snapshot : USD/DZD</text>
+                <text x="870" y="512" fill="#fff" font-size="10.5" font-weight="600">    sub_total : numeric</text>
+              </g>
+            </svg>
+          </div>
+          <div class="diagram-caption">
+            <span>Each leaf calculation executes inside a single SQL transaction, freezing formula versions, material waste margins, and currency rates.</span>
+            <span>Interactive Schema Spine</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 3: 33-Table Domain Inventory -->
+      <section class="panel span6">
+        <header class="panel-head">
+          <span class="panel-id">3</span>
+          <h2>33-Table Relational Schema Inventory</h2>
+        </header>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Functional Domain</th>
+                  <th>Core Tables</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Identity &amp; Auth</strong></td>
+                  <td><code>users</code>, <code>refresh_tokens</code>, <code>password_reset_tokens</code></td>
+                  <td>3</td>
+                </tr>
+                <tr>
+                  <td><strong>SaaS Entitlements</strong></td>
+                  <td><code>plan_types</code>, <code>plans</code>, <code>features</code>, <code>subscriptions</code></td>
+                  <td>4</td>
+                </tr>
+                <tr>
+                  <td><strong>Estimation Spine</strong></td>
+                  <td><code>projects</code>, <code>estimation</code>, <code>project_details</code>, <code>estimation_detail_material</code>, <code>estimation_detail_service</code></td>
+                  <td>5</td>
+                </tr>
+                <tr>
+                  <td><strong>Dynamic Formula Engine</strong></td>
+                  <td><code>categories</code>, <code>formulas</code>, <code>formula_output</code>, <code>field_definitions</code>, <code>field_types</code>, <code>units</code>, <code>coefficients</code></td>
+                  <td>7</td>
+                </tr>
+                <tr>
+                  <td><strong>Price Catalog &amp; FX</strong></td>
+                  <td><code>material_config</code>, <code>resource_catalog</code>, <code>service_config</code>, <code>financial_settings</code>, <code>exchange_rate_log</code></td>
+                  <td>5</td>
+                </tr>
+                <tr>
+                  <td><strong>Bilingual Content Hub</strong></td>
+                  <td><code>articles</code>, <code>article_types</code>, <code>tags</code>, <code>article_tags</code>, <code>likes</code>, <code>saves</code>, <code>predefined_questions</code>, <code>app_translations</code></td>
+                  <td>8</td>
+                </tr>
+                <tr>
+                  <td><strong>AI Consultation Audit</strong></td>
+                  <td><code>ai_usage_history</code></td>
+                  <td>1</td>
+                </tr>
+                <tr>
+                  <td><strong>Total Architecture</strong></td>
+                  <td><strong>7 Cohesive Business Domains</strong></td>
+                  <td><strong>33</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 4: Engineering Pillars & Dual-Client Capabilities -->
+      <section class="panel span6">
+        <header class="panel-head">
+          <span class="panel-id">4</span>
+          <h2>Core Engineering Pillars &amp; Client Capabilities</h2>
+        </header>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Subsystem</th>
+                  <th>Architectural Implementation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <span class="pillar-tag">Dynamic Engine</span><br>
+                    <strong>Zero-Deploy Formulas</strong>
+                  </td>
+                  <td>Evaluates <code>NON_MATERIAL</code> and <code>MATERIAL</code> expressions dynamically at runtime using database-driven <code>field_definitions</code> and <code>coefficients</code>.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="pillar-tag">Mobile Engineering</span><br>
+                    <strong>5-Tier Expo SDK 52 App</strong>
+                  </td>
+                  <td>Built across 5 decoupled layers (Presentation, Hooks/Context, Services, API Mappers, Infrastructure) with 35+ screens and native PDF export via <code>expo-print</code>.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="pillar-tag">Resilience</span><br>
+                    <strong>Silent Token Lifecycle</strong>
+                  </td>
+                  <td>Axios request/response interceptors inject Bearer tokens and automatically execute silent 7-day refresh cycles on HTTP 401 without interrupting field workflows.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="pillar-tag">Localization</span><br>
+                    <strong>Full RTL &amp; Bilingual JSONB</strong>
+                  </td>
+                  <td>Complete Arabic Right-to-Left (RTL) layout mirroring alongside English, backed by bilingual database columns and localized AI assistant responses.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="pillar-tag">FX Resilience</span><br>
+                    <strong>3-Tier Currency Fallback</strong>
+                  </td>
+                  <td>Fetches live USD-to-DZD rates with a 3-second timeout, applies administrative <code>market_factor</code> multipliers, and falls back to cached <code>exchange_rate_log</code> entries offline.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Live Platform CTA Banner -->
+    <section class="cta-banner">
+      <div>
+        <h3>Experience the APEX SaaS Platform Live</h3>
+        <p>Sign up and test the full estimation workflow, dynamic civil engineering categories, AI assistant, and PDF Devis export—includes 5 free projects on registration.</p>
+      </div>
+      <a href="https://apex-ochre-gamma.vercel.app/" target="_blank" rel="noopener noreferrer" class="cta-btn">
+        <span>Launch Live Web Application</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11L11 5M11 5H5M11 5V11"/></svg>
+      </a>
+    </section>
+  </div>
+
+  <script>
+    // Theme Switcher
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', () => {
+      const root = document.documentElement;
+      const current = root.getAttribute('data-theme');
+      root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    });
+
+    // Interactive SVG Node & Path Highlighting on Hover
+    function bindInteractiveSvg(svgId) {
+      const svg = document.getElementById(svgId);
+      if (!svg) return;
+      const nodes = svg.querySelectorAll('.svg-node');
+      const edges = svg.querySelectorAll('.edge-group');
+
+      nodes.forEach(node => {
+        const nodeId = node.getAttribute('data-node');
+
+        node.addEventListener('mouseenter', () => {
+          svg.classList.add('dimmed');
+          node.classList.add('active-node');
+
+          edges.forEach(edge => {
+            const from = edge.getAttribute('data-from');
+            const to = edge.getAttribute('data-to');
+            if (from === nodeId || to === nodeId) {
+              edge.classList.add('active-edge');
+              const peerId = from === nodeId ? to : from;
+              const peerNode = svg.querySelector(`.svg-node[data-node="${peerId}"]`);
+              if (peerNode) peerNode.classList.add('active-node');
+            }
+          });
+        });
+
+        node.addEventListener('mouseleave', () => {
+          svg.classList.remove('dimmed');
+          nodes.forEach(n => n.classList.remove('active-node'));
+          edges.forEach(e => e.classList.remove('active-edge'));
+        });
+      });
+    }
+
+    bindInteractiveSvg('runtimeSvg');
+    bindInteractiveSvg('erdSvg');
+  </script>
+</body>
+</html>
