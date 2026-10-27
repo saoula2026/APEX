@@ -1,7 +1,0 @@
-# Exclude all project source code, database dumps, and dependencies from Vercel hosting
-backend_pfe/
-frontend_pfe/
-backup.sql
-package-lock.json
-.git
-.gitignore
